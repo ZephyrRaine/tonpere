@@ -1,0 +1,107 @@
+html { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: inherit; }
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Mountains of Christmas', cursive;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d);
+    overflow-x: hidden;
+    overflow-y: auto;
+    color: #fff;
+    text-align: center;
+    padding-bottom: 24px;
+}
+
+h1 {
+    font-size: 4em;
+    margin-bottom: 30px;
+    text-shadow: 2px 2px 10px #000;
+}
+
+#countdown {
+    font-size: 2.5em;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 30px 50px;
+    border-radius: 20px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+    text-shadow: 1px 1px 5px #000;
+    margin-bottom: 24px;
+    display: inline-block;
+    max-width: min(720px, 92vw);
+}
+
+/* Flocons de neige */
+.snowflake {
+    position: fixed;
+    top: -10px;
+    color: white;
+    font-size: 1em;
+    user-select: none;
+    pointer-events: none;
+    animation: fall linear infinite;
+    z-index: 0;
+}
+
+@keyframes fall {
+    0% { transform: translateY(0) translateX(0); opacity: 1; }
+    100% { transform: translateY(100vh) translateX(50px); opacity: 0; }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .snowflake { animation: none !important; }
+}
+
+/* Form styling to match theme */
+form { width: min(720px, 92vw); max-width: 100%; margin: 0 auto; background: rgba(0,0,0,0.35); padding: 20px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); text-align: left; }
+/* Ensure main content sits above snowflakes */
+h1, #countdown, .description, form { position: relative; z-index: 1; }
+label { display: block; font-weight: 700; margin: 12px 0 8px; }
+input[type="text"], textarea { display: block; width: 100%; max-width: 100%; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.35); background: rgba(0,0,0,0.25); color: #fff; border-radius: 10px; outline: none; }
+input[type="text"]::placeholder, textarea::placeholder { color: rgba(255,255,255,0.7); }
+input[type="text"]:focus, textarea:focus { border-color: #ffd166; box-shadow: 0 0 0 3px rgba(255,209,102,0.25); }
+textarea { min-height: 180px; resize: vertical; }
+.hint { color: rgba(255,255,255,0.85); font-size: 14px; margin-top: 4px; }
+button { margin-top: 16px; padding: 12px 16px; background: #06d6a0; color: #0b0b0b; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; }
+button:hover { background: #0ee4ae; }
+.footer { margin-top: 14px; color: rgba(255,255,255,0.9); font-size: 12px; text-align: center; }
+
+/* Simple card style for thank-you page */
+.card { max-width: 520px; margin: 24px; padding: 28px; background: rgba(0,0,0,0.35); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); text-align: center; }
+a { color: #ffd166; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Optional description block under the countdown */
+.description { width: min(720px, 92vw); margin: 0 auto 16px auto; color: rgba(255,255,255,0.95); font-size: 18px; line-height: 1.5; text-shadow: 1px 1px 4px rgba(0,0,0,0.35); }
+
+/* Use Momo Signature for description and form */
+.description,
+form,
+form label,
+input[type="text"],
+textarea,
+button,
+p { font-family: 'Momo Signature', cursive; }
+
+/* Responsive tweaks */
+@media (max-width: 600px) {
+    h1 { font-size: 2.6em; margin-bottom: 18px; }
+    #countdown { font-size: 1.6em; padding: 16px 20px; margin-bottom: 16px; }
+    .description { font-size: 16px; margin-bottom: 12px; }
+    form { padding: 16px; }
+    textarea { min-height: 140px; }
+    button { width: 100%; }
+}
+
+@media (max-width: 360px) {
+    h1 { font-size: 2.2em; }
+    #countdown { font-size: 1.3em; }
+}
+
+

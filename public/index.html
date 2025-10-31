@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ton père</title>
+  <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Momo+Signature&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+  <meta name="description" content="Ok on est ici pour se poster des ons et des events pour se fairte découvrir des truck ou polémiquer , hésiter a métre vrm les sons que vous découvrer/kiffer moi en tt cas mm si je me mets a kiffer le reggea j'hésiterai ap!">
+</head>
+<body>
+  <h1>🎄 Ton père de l'avent 🎄</h1>
+  <div id="countdown"></div>
+  <div class="description">Ok on est ici pour se poster des ons et des events pour se fairte découvrir des truck ou polémiquer , hésiter a métre vrm les sons que vous découvrer/kiffer moi en tt cas mm si je me mets a kiffer le reggea j'hésiterai ap!</div>
+
+  <form method="POST" action="/submit">
+    <label for="name">prénom</label>
+    <input id="name" name="name" type="text" placeholder="jean-françois copé" required>
+
+    <label for="videos">liens (youtube, spotify, deezer)</label>
+    <textarea id="videos" name="videos" required></textarea>
+    <div class="hint">un lien par ligne pitié</div>
+
+    <button type="submit">Envoyer</button>
+  </form>
+  <script>
+    function updateCountdown() {
+        const now = new Date();
+        let year = now.getFullYear();
+        const christmas = new Date(year, 11, 1);
+        if (now > christmas) {
+            christmas.setFullYear(year + 1);
+        }
+        const diff = christmas - now;
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((diff / (1000 * 60)) % 60);
+        const seconds = Math.floor((diff / 1000) % 60);
+        document.getElementById("countdown").innerHTML = `${days} jours, ${hours}h ${minutes}m ${seconds}s`;
+    }
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    function createSnowflakes() {
+        const snowflake = document.createElement('div');
+        snowflake.classList.add('snowflake');
+        snowflake.textContent = '❄';
+        snowflake.style.left = Math.random() * window.innerWidth + 'px';
+        snowflake.style.animationDuration = (3 + Math.random() * 5) + 's';
+        snowflake.style.fontSize = (10 + Math.random() * 30) + 'px';
+        document.body.appendChild(snowflake);
+        setTimeout(() => { snowflake.remove(); }, 8000);
+    }
+    setInterval(createSnowflakes, 200);
+  </script>
+</body>
+</html>
+
+

@@ -1,0 +1,17 @@
+{
+  "name": "tonpere",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Basic web page to collect name and YouTube list, storing to JSON.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.1"
+  }
+}
+
+
