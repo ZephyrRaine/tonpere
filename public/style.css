@@ -104,4 +104,17 @@ p { font-family: 'Momo Signature', cursive; }
     #countdown { font-size: 1.3em; }
 }
 
+.countdown-container {
+    display: flex;
+    align-items: center;
+}
 
+.caca, .leop {
+    width: 60px;
+    margin: 20px;
+    cursor: pointer;
+}
+
+.caca:hover, .leop:hover {
+    transform: scale(1.2);
+}

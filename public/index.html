@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ton père</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Momo+Signature&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
@@ -12,7 +13,13 @@
 </head>
 <body>
   <h1>🎄 Ton père de l'avent 🎄</h1>
-  <div id="countdown"></div>
+  <div class="countdown-container">
+    <img src="/assets/caca.png" class="caca" onclick="playCaca()"></img>
+    <audio id="caca" src="/assets/caca.mp3"></audio>
+    <div id="countdown"></div>
+    <img src="/assets/leop.png" class="leop" onclick="playLeop()"></img>
+    <audio id="leop" src="/assets/leop.mp3"></audio>
+  </div>
   <div class="description">Ok on est ici pour se poster des ons et des events pour se fairte découvrir des truck ou polémiquer , hésiter a métre vrm les sons que vous découvrer/kiffer moi en tt cas mm si je me mets a kiffer le reggea j'hésiterai ap!</div>
 
   <form method="POST" action="/submit">
@@ -54,6 +61,15 @@
         setTimeout(() => { snowflake.remove(); }, 8000);
     }
     setInterval(createSnowflakes, 200);
+
+    function playCaca() {
+        var caca = document.getElementById("caca");
+        caca.play();
+    }
+    function playLeop() {
+        var leop = document.getElementById("leop");
+        leop.play();
+    }
   </script>
 </body>
 </html>
