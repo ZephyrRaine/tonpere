@@ -11,6 +11,9 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev
 
 FROM base AS runner
+# Install su-exec for switching users
+RUN apk add --no-cache su-exec
+
 # Create a non-root user
 RUN addgroup -S nodegrp && adduser -S nodeusr -G nodegrp
 
@@ -20,12 +23,17 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy app source
 COPY . .
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Ensure data directory exists and is writable
 RUN mkdir -p /app/data && chown -R nodeusr:nodegrp /app
-USER nodeusr
+
+# Use entrypoint to handle permissions (runs as root, then switches to nodeusr)
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["node", "server.js"]
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/health || exit 1
-
-CMD ["node", "server.js"]
