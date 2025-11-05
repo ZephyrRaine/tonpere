@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ton père</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Momo+Signature&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
@@ -12,7 +13,20 @@
 </head>
 <body>
   <h1>🎄 Ton père de l'avent 🎄</h1>
-  <div id="countdown"></div>
+  <div class="countdown-container">
+    <img src="/assets/caca.png" class="caca" onclick="playCaca()"></img>
+    <audio id="caca" src="/assets/caca.mp3"></audio>
+    <div id="countdown"></div>
+    <div class="leop-container" onclick="toggleLeop()">
+      <svg class="progress-ring" width="60" height="60">
+        <circle class="progress-ring__background" cx="30" cy="30" r="28" />
+        <circle class="progress-ring__progress" cx="30" cy="30" r="28" />
+      </svg>
+      <img src="/assets/pause.png" class="pause">
+      <img src="/assets/leop.png" class="leop">
+    </div>
+    <audio id="leop" src="/assets/leop.mp3"></audio>
+  </div>
   <div class="description">Ok on est ici pour se poster des ons et des events pour se fairte découvrir des truck ou polémiquer , hésiter a métre vrm les sons que vous découvrer/kiffer moi en tt cas mm si je me mets a kiffer le reggea j'hésiterai ap!</div>
 
   <form method="POST" action="/submit">
@@ -57,6 +71,58 @@
         setTimeout(() => { snowflake.remove(); }, 8000);
     }
     setInterval(createSnowflakes, 200);
+
+    function playCaca() {
+        var caca = document.getElementById("caca");
+        caca.play();
+    }
+
+    const leopAudio = document.getElementById('leop');
+    const progress = document.querySelector('.progress-ring');
+    const pause = document.querySelector('.pause');
+    const progressCircle = document.querySelector('.progress-ring__progress');
+    const radius = 36;
+    const circumference = 2 * Math.PI * radius;
+    let isPlaying = false;
+
+    function toggleLeop() {
+      if (isPlaying) {
+        stopLeop();
+      } else {
+        playLeop();
+      }
+    }
+
+    function playLeop() {
+      leopAudio.currentTime = 0;
+      leopAudio.play();
+      progress.style.visibility = "visible";
+      pause.style.visibility = "visible";
+      isPlaying = true;
+    }
+
+    function stopLeop() {
+      leopAudio.pause();
+      leopAudio.currentTime = 0;
+      progress.style.visibility = "hidden";
+      pause.style.visibility = "hidden";
+      isPlaying = false;
+      updateProgress(0);
+    }
+
+    function updateProgress(percent) {
+      const offset = circumference - percent * circumference;
+      progressCircle.style.strokeDashoffset = offset;
+    }
+
+    leopAudio.addEventListener('timeupdate', () => {
+      const percent = leopAudio.currentTime / leopAudio.duration;
+      updateProgress(percent);
+    });
+
+    leopAudio.addEventListener('ended', () => {
+      stopLeop();
+    });
   </script>
 </body>
 </html>
