@@ -47,10 +47,11 @@ function writeSubmissions(submissions) {
 
 // POST endpoint to receive form submissions
 app.post("/submit", (req, res) => {
-  const { name, videos } = req.body;
+  const { name, videos, banger } = req.body;
 
   const trimmedName = typeof name === "string" ? name.trim() : "";
   const videosRaw = typeof videos === "string" ? videos : "";
+  const bangerRaw = typeof banger === "string" ? banger : "";
 
   if (!trimmedName) {
     return res.status(400).json({ error: "Name is required" });
@@ -65,10 +66,16 @@ app.post("/submit", (req, res) => {
     return res.status(400).json({ error: "Please provide at least one YouTube link" });
   }
 
+  const bangerSingle = bangerRaw
+    .split(/\r?\n/)
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0)[0] || "";
+
   const submission = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: trimmedName,
     videos: videoLines,
+    banger: bangerSingle,
     createdAt: new Date().toISOString()
   };
 
