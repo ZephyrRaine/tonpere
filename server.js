@@ -13,6 +13,7 @@ const port = process.env.PORT || 3000;
 const publicDir = path.join(__dirname, "public");
 const dataDir = path.join(__dirname, "data");
 const submissionsPath = path.join(dataDir, "submissions.json");
+const calendarPath = path.join(dataDir, "calendar.json");
 
 // Ensure data directory and file exist
 function ensureStorage() {
@@ -90,6 +91,89 @@ app.post("/submit", (req, res) => {
   }
 
   return res.status(201).json({ ok: true, submission });
+});
+
+// Serve the generated calendar JSON with date-based filtering
+app.get("/api/calendar", (_req, res) => {
+  try {
+    if (!fs.existsSync(calendarPath)) {
+      return res.status(404).json({ error: "calendar.json not found. Generate it first." });
+    }
+    const raw = fs.readFileSync(calendarPath, "utf-8");
+    const calendarData = JSON.parse(raw);
+    
+    // Determine current date status
+    // TESTING: Using October (month 9) instead of December for testing
+    const now = new Date();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const targetMonth = 9; // October (for testing)
+    const today = now.getDate();
+    
+    // Filter calendar data based on current date
+    const filtered = {};
+    const dayKeys = Object.keys(calendarData).map(Number).filter((n) => Number.isFinite(n));
+    const maxDay = dayKeys.length ? Math.max(...dayKeys) : 24;
+    
+    for (let day = 1; day <= maxDay; day++) {
+      const dayStr = String(day);
+      const dayData = calendarData[dayStr];
+      
+      if (!dayData) {
+        // Day doesn't exist in calendar, mark as REDACTED
+        filtered[dayStr] = [{ url: "REDACTED", submitterName: "REDACTED" }];
+        continue;
+      }
+      
+      // Check if day should be accessible
+      let isAccessible = false;
+      if (currentMonth > targetMonth) {
+        // We're past the target month, all days are accessible
+        isAccessible = true;
+      } else if (currentMonth === targetMonth) {
+        // We're in the target month, only past/current days are accessible
+        if (day <= today) {
+          isAccessible = true;
+        }
+      } else {
+        // We're before the target month, no days are accessible
+        isAccessible = false;
+      }
+      
+      if (isAccessible) {
+        // Special case: last day should include all bangers
+        if (day === maxDay) {
+          const submissions = readSubmissions();
+          const allBangers = [];
+          for (const submission of submissions) {
+            const name = String(submission.name || "").trim();
+            const banger = String(submission.banger || "").trim();
+            if (name && banger && banger.length > 0) {
+              allBangers.push({
+                url: banger,
+                submitterName: name
+              });
+            }
+          }
+          // If we have bangers, return them; otherwise fall back to regular calendar data
+          if (allBangers.length > 0) {
+            filtered[dayStr] = allBangers;
+          } else {
+            filtered[dayStr] = dayData;
+          }
+        } else {
+          // Return actual data for regular days
+          filtered[dayStr] = dayData;
+        }
+      } else {
+        // Return REDACTED placeholder
+        filtered[dayStr] = [{ url: "REDACTED", submitterName: "REDACTED" }];
+      }
+    }
+    
+    return res.json(filtered);
+  } catch (err) {
+    return res.status(500).json({ error: "Failed to read calendar.json" });
+  }
 });
 
 // Health endpoint

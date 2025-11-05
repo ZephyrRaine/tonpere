@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendrier de l'avent</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Momo+Signature&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/calendar.css">
+  <script src="/sounds.js"></script>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://www.youtube.com https://open.spotify.com https://w.soundcloud.com https://widget.deezer.com https://*.bandcamp.com;">
+</head>
+<body class="calendar-page">
+  <h1>🎄 Ton père de l'avent 🎄</h1>
+  <div class="countdown-container">
+    <img src="/assets/caca.png" class="caca" onclick="playCaca()"></img>
+    <audio id="caca" src="/assets/caca.mp3"></audio>
+    <div id="countdown"></div>
+    <div class="leop-container" onclick="toggleLeop()">
+      <svg class="progress-ring" width="60" height="60">
+        <circle class="progress-ring__background" cx="30" cy="30" r="28" />
+        <circle class="progress-ring__progress" cx="30" cy="30" r="28" />
+      </svg>
+      <img src="/assets/pause.png" class="pause">
+      <img src="/assets/leop.png" class="leop">
+    </div>
+    <audio id="leop" src="/assets/leop.mp3"></audio>
+  </div>
+
+  <div class="calendar-container">
+    <div id="calendar" class="calendar-grid" aria-live="polite"></div>
+  </div>
+
+  <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <button class="modal-close" id="closeModal" aria-label="Fermer">❌</button>
+      <h2 id="modalTitle">Jour <span id="modalDay"></span></h2>
+      <div id="modalSubtitle" class="modal-subtitle"></div>
+      <div class="links" id="links"></div>
+    </div>
+  </div>
+
+  <script>
+    async function fetchCalendar() {
+      const res = await fetch('/api/calendar');
+      if (!res.ok) throw new Error('calendar.json not available');
+      return await res.json();
+    }
+
+    function isDayAccessible(dayData) {
+      // Check if day data is REDACTED
+      if (!dayData || !Array.isArray(dayData) || dayData.length === 0) return false;
+      const firstItem = dayData[0];
+      return firstItem.url !== 'REDACTED' && firstItem.submitterName !== 'REDACTED';
+    }
+
+    function readViewed() {
+      try {
+        return JSON.parse(localStorage.getItem('viewedDays')) || {};
+      } catch (_) { return {}; }
+    }
+
+    function writeViewed(map) {
+      localStorage.setItem('viewedDays', JSON.stringify(map));
+    }
+
+    let maxDayGlobal = 24;
+
+    function getEmbedUrl(url) {
+      try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname.toLowerCase();
+        
+        // YouTube
+        if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+          let videoId = null;
+          if (hostname.includes('youtu.be')) {
+            videoId = urlObj.pathname.slice(1);
+          } else {
+            videoId = urlObj.searchParams.get('v');
+          }
+          if (videoId) {
+            return {
+              type: 'youtube',
+              embedUrl: `https://www.youtube.com/embed/${videoId}`,
+              originalUrl: url
+            };
+          }
+        }
+        
+        // Spotify
+        if (hostname.includes('spotify.com')) {
+          const path = urlObj.pathname;
+          if (path.match(/^\/(track|album|playlist|artist)\//)) {
+            return {
+              type: 'spotify',
+              embedUrl: `https://open.spotify.com/embed${path}?utm_source=generator`,
+              originalUrl: url
+            };
+          }
+        }
+        
+        // SoundCloud
+        if (hostname.includes('soundcloud.com')) {
+          return {
+            type: 'soundcloud',
+            embedUrl: `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true`,
+            originalUrl: url
+          };
+        }
+        
+        // Deezer
+        if (hostname.includes('deezer.com')) {
+          const path = urlObj.pathname;
+          const match = path.match(/\/(track|album|playlist)\/(\d+)/);
+          if (match) {
+            return {
+              type: 'deezer',
+              embedUrl: `https://widget.deezer.com/widget/dark/${match[1]}/${match[2]}`,
+              originalUrl: url
+            };
+          }
+        }
+        
+        // Bandcamp
+        if (hostname.includes('bandcamp.com')) {
+          const path = urlObj.pathname;
+          if (path.match(/^\/(track|album)\//)) {
+            return {
+              type: 'bandcamp',
+              embedUrl: url,
+              originalUrl: url
+            };
+          }
+        }
+      } catch (e) {
+        // Invalid URL, return null
+      }
+      return null;
+    }
+
+    function getTitleFromUrl(url, embedInfo) {
+      try {
+        const urlObj = new URL(url);
+        if (embedInfo.type === 'youtube') {
+          // YouTube titles are usually in the page title, but we can't access that
+          // Use a generic format
+          return '🎵 Vidéo YouTube';
+        } else if (embedInfo.type === 'spotify') {
+          return '🎵 Piste Spotify';
+        } else if (embedInfo.type === 'soundcloud') {
+          const path = urlObj.pathname.split('/').filter(p => p);
+          if (path.length >= 2) {
+            return `🎵 ${path[path.length - 1].replace(/-/g, ' ')}`;
+          }
+          return '🎵 Piste SoundCloud';
+        } else if (embedInfo.type === 'deezer') {
+          return '🎵 Piste Deezer';
+        } else if (embedInfo.type === 'bandcamp') {
+          const path = urlObj.pathname.split('/').filter(p => p);
+          if (path.length >= 2) {
+            return `🎵 ${path[path.length - 1].replace(/-/g, ' ')}`;
+          }
+          return '🎵 Piste Bandcamp';
+        }
+      } catch (e) {
+        // Fallback
+      }
+      return '🎵 Lien';
+    }
+
+    function createEmbedCard(item, embedInfo) {
+      const card = document.createElement('div');
+      card.className = 'link-card collapsible-card';
+      
+      const by = document.createElement('div');
+      by.className = 'by';
+      by.textContent = `par ${item.submitterName}`;
+      
+      const titleButton = document.createElement('button');
+      titleButton.className = 'title-button';
+      titleButton.textContent = getTitleFromUrl(embedInfo.originalUrl, embedInfo);
+      titleButton.setAttribute('aria-expanded', 'false');
+      
+      const titleContainer = document.createElement('div');
+      titleContainer.className = 'title-container';
+      titleContainer.appendChild(by);
+      titleContainer.appendChild(titleButton);
+      card.appendChild(titleContainer);
+      
+      const embedContainer = document.createElement('div');
+      embedContainer.className = 'embed-container collapsed';
+      embedContainer.style.display = 'none';
+      
+      if (embedInfo.type === 'youtube') {
+        embedContainer.className = 'embed-container collapsed youtube-embed';
+        const iframeWrapper = document.createElement('div');
+        iframeWrapper.className = 'iframe-wrapper';
+        const iframe = document.createElement('iframe');
+        iframe.src = embedInfo.embedUrl;
+        iframe.frameBorder = '0';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        iframe.allowFullscreen = true;
+        iframeWrapper.appendChild(iframe);
+        embedContainer.appendChild(iframeWrapper);
+      } else if (embedInfo.type === 'spotify') {
+        embedContainer.className = 'embed-container collapsed spotify-embed';
+        const iframe = document.createElement('iframe');
+        iframe.src = embedInfo.embedUrl;
+        iframe.frameBorder = '0';
+        iframe.allowtransparency = 'true';
+        iframe.allow = 'encrypted-media';
+        iframe.style.width = '100%';
+        iframe.style.height = '352px';
+        iframe.style.borderRadius = '12px';
+        embedContainer.appendChild(iframe);
+      } else if (embedInfo.type === 'soundcloud') {
+        embedContainer.className = 'embed-container collapsed soundcloud-embed';
+        const iframe = document.createElement('iframe');
+        iframe.src = embedInfo.embedUrl;
+        iframe.frameBorder = 'no';
+        iframe.scrolling = 'no';
+        iframe.style.width = '100%';
+        iframe.style.height = '166px';
+        embedContainer.appendChild(iframe);
+      } else if (embedInfo.type === 'deezer') {
+        embedContainer.className = 'embed-container collapsed deezer-embed';
+        const iframe = document.createElement('iframe');
+        iframe.src = embedInfo.embedUrl;
+        iframe.frameBorder = '0';
+        iframe.allowtransparency = 'true';
+        iframe.allow = 'encrypted-media';
+        iframe.style.width = '100%';
+        iframe.style.height = '300px';
+        iframe.style.borderRadius = '12px';
+        embedContainer.appendChild(iframe);
+      } else if (embedInfo.type === 'bandcamp') {
+        embedContainer.className = 'embed-container collapsed bandcamp-embed';
+        const iframe = document.createElement('iframe');
+        iframe.src = embedInfo.embedUrl;
+        iframe.frameBorder = '0';
+        iframe.style.width = '100%';
+        iframe.style.height = '120px';
+        iframe.style.border = '0';
+        embedContainer.appendChild(iframe);
+      }
+      
+      const fallbackLink = document.createElement('a');
+      fallbackLink.href = embedInfo.originalUrl;
+      fallbackLink.target = '_blank';
+      fallbackLink.rel = 'noopener noreferrer';
+      fallbackLink.textContent = 'Ouvrir dans une nouvelle page';
+      fallbackLink.className = 'fallback-link';
+      embedContainer.appendChild(fallbackLink);
+      
+      card.appendChild(embedContainer);
+      
+      // Click handler to toggle embed
+      titleButton.addEventListener('click', () => {
+        const isExpanded = titleButton.getAttribute('aria-expanded') === 'true';
+        
+        // Close all other cards
+        const allCards = document.querySelectorAll('.collapsible-card');
+        allCards.forEach((otherCard) => {
+          if (otherCard !== card) {
+            const otherButton = otherCard.querySelector('.title-button');
+            const otherEmbed = otherCard.querySelector('.embed-container');
+            if (otherButton && otherEmbed) {
+              otherButton.setAttribute('aria-expanded', 'false');
+              otherEmbed.style.display = 'none';
+              otherCard.classList.remove('expanded');
+            }
+          }
+        });
+        
+        // Toggle current card
+        if (isExpanded) {
+          titleButton.setAttribute('aria-expanded', 'false');
+          embedContainer.style.display = 'none';
+          card.classList.remove('expanded');
+        } else {
+          titleButton.setAttribute('aria-expanded', 'true');
+          embedContainer.style.display = 'block';
+          card.classList.add('expanded');
+        }
+      });
+      
+      return card;
+    }
+
+    function openModal(day, items, isLastDay = false) {
+      document.getElementById('modalDay').textContent = String(day);
+      const subtitleEl = document.getElementById('modalSubtitle');
+      if (isLastDay && day === maxDayGlobal) {
+        subtitleEl.textContent = '🎵 Tous les bangers de tout le monde 🎵';
+        subtitleEl.style.display = 'block';
+      } else {
+        subtitleEl.textContent = '';
+        subtitleEl.style.display = 'none';
+      }
+      
+      const linksEl = document.getElementById('links');
+      linksEl.innerHTML = '';
+      (items || []).forEach((item) => {
+        const embedInfo = getEmbedUrl(item.url);
+        
+        if (embedInfo) {
+          // Create embed card
+          const card = createEmbedCard(item, embedInfo);
+          linksEl.appendChild(card);
+        } else {
+          // Fallback to regular link card
+          const card = document.createElement('div');
+          card.className = 'link-card';
+          const a = document.createElement('a');
+          a.href = item.url;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.textContent = item.url;
+          const by = document.createElement('div');
+          by.className = 'by';
+          by.textContent = `par ${item.submitterName}`;
+          card.appendChild(a);
+          card.appendChild(by);
+          linksEl.appendChild(card);
+        }
+      });
+      document.getElementById('modalOverlay').classList.add('open');
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('open');
+      // Re-enable body scroll
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('closeModal').addEventListener('click', closeModal);
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+      if (e.target.id === 'modalOverlay') closeModal();
+    });
+    
+    // Prevent scroll on overlay from propagating to background
+    document.getElementById('modalOverlay').addEventListener('wheel', (e) => {
+      if (e.target.id === 'modalOverlay') {
+        e.preventDefault();
+      }
+    }, { passive: false });
+    
+    document.getElementById('modalOverlay').addEventListener('touchmove', (e) => {
+      if (e.target.id === 'modalOverlay') {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    function renderCalendar(calendarData) {
+      const container = document.getElementById('calendar');
+      container.innerHTML = '';
+      const viewed = readViewed();
+      const keys = Object.keys(calendarData).map(Number).filter((n) => Number.isFinite(n));
+      const maxDay = keys.length ? Math.max(...keys) : 24;
+      maxDayGlobal = maxDay; // Store globally for openModal
+      
+      for (let day = 1; day <= maxDay; day++) {
+        const dayStr = String(day);
+        const dayData = calendarData[dayStr] || [];
+        const isAccessible = isDayAccessible(dayData);
+        const isViewed = viewed[dayStr];
+        
+        const tile = document.createElement('div');
+        let statusClass = 'future';
+        if (isAccessible) {
+          // Check if it's today or past by comparing with current day
+          // TESTING: Using October (month 9) instead of December for testing
+          const now = new Date();
+          const currentMonth = now.getMonth();
+          const targetMonth = 9; // October for testing
+          if (currentMonth >= targetMonth) {
+            // If we're in or past the target month, mark as past
+            statusClass = 'past';
+            // If we're in the target month and it's today, mark as current
+            if (currentMonth === targetMonth) {
+              const today = now.getDate();
+              if (day === today) {
+                statusClass = 'current';
+              }
+            }
+          }
+        }
+        
+        const viewClass = isViewed ? 'viewed' : '';
+        tile.className = `day-tile ${statusClass} ${viewClass}`.trim();
+        tile.setAttribute('role', isAccessible ? 'button' : 'presentation');
+        tile.setAttribute('tabindex', isAccessible ? '0' : '-1');
+        tile.dataset.day = dayStr;
+        tile.innerHTML = `<div class="day-number">${day}</div><div class="gift-emoji">🎁</div>`;
+
+        if (isAccessible) {
+          tile.addEventListener('click', () => {
+            const v = readViewed();
+            v[dayStr] = true;
+            writeViewed(v);
+            const isLastDay = day === maxDay;
+            openModal(day, dayData, isLastDay);
+            tile.classList.add('viewed');
+          });
+
+          tile.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              tile.click();
+            }
+          });
+        }
+
+        container.appendChild(tile);
+      }
+    }
+
+    function createSnowflakes() {
+      const snowflake = document.createElement('div');
+      snowflake.classList.add('snowflake');
+      snowflake.textContent = '❄';
+      snowflake.style.left = Math.random() * window.innerWidth + 'px';
+      snowflake.style.animationDuration = (3 + Math.random() * 5) + 's';
+      snowflake.style.fontSize = (10 + Math.random() * 30) + 'px';
+      document.body.appendChild(snowflake);
+      setTimeout(() => { snowflake.remove(); }, 8000);
+    }
+
+    function updateCountdown(calendarData) {
+      const now = new Date();
+      const keys = Object.keys(calendarData).map(Number).filter((n) => Number.isFinite(n));
+      const maxDay = keys.length ? Math.max(...keys) : 24;
+      
+      // TESTING: Using October (month 9) instead of December (month 11) for testing
+      // For production, change to month 11 (December)
+      const targetMonth = 9; // October for testing
+      const currentYear = now.getFullYear();
+      
+      // Calculate target date: last day of the calendar in the target month
+      const targetDate = new Date(currentYear, targetMonth, maxDay, 23, 59, 59, 999);
+      
+
+      
+      const diff = targetDate - now;
+      
+      if (diff <= 0) {
+        document.getElementById("countdown").innerHTML = "Terminé!";
+        return;
+      }
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+      
+      document.getElementById("countdown").innerHTML = `${days} jours, ${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    (async function init() {
+      // Start snowflake animation
+      setInterval(createSnowflakes, 200);
+      
+      // Ensure calendar content is above snowflakes
+      const container = document.querySelector('.calendar-container');
+      if (container) container.style.position = 'relative';
+      if (container) container.style.zIndex = '1';
+      
+      try {
+        const data = await fetchCalendar();
+        renderCalendar(data);
+        
+        // Start countdown to end of calendar
+        updateCountdown(data);
+        setInterval(() => updateCountdown(data), 1000);
+      } catch (err) {
+        const container = document.getElementById('calendar');
+        container.innerHTML = '<div>calendar.json introuvable. Générez-le d\'abord.</div>';
+      }
+    })();
+  </script>
+</body>
+</html>
+
+
