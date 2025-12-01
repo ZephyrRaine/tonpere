@@ -10,8 +10,9 @@
     "dev": "NODE_ENV=development node server.js"
   },
   "dependencies": {
-    "express": "^4.21.1"
+    "express": "^4.21.1",
+    "twilio": "^5.10.6",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.4.5"
   }
 }
-
-

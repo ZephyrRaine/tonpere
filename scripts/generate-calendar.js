@@ -105,20 +105,53 @@ function generateCalendar(submissions) {
 
   const calendar = {};
   for (let day = 1; day <= REQUIRED_DAYS; day++) {
-    const dayAssignments = [];
-    const chosenSubmitters = new Set();
-    for (let i = 0; i < LINKS_PER_DAY; i++) {
-      const submitter = getNextSubmitter(chosenSubmitters);
-      if (!submitter) {
-        throw new Error(`Could not find enough distinct submitters for day ${day}`);
+    // Special case: last day should include all bangers from everyone
+    if (day === REQUIRED_DAYS) {
+      const allBangers = [];
+      for (const submission of submissions) {
+        const name = String(submission.name || "").trim();
+        const banger = String(submission.banger || "").trim();
+        if (name && banger && banger.length > 0) {
+          allBangers.push({ url: banger });
+        }
       }
-      const links = pool.get(submitter);
-      const url = links.shift();
-      dayAssignments.push({ url, submitterName: submitter });
-      usedCount.set(submitter, (usedCount.get(submitter) || 0) + 1);
-      chosenSubmitters.add(submitter);
+      // If we have bangers, use them; otherwise fall back to regular calendar data
+      if (allBangers.length > 0) {
+        calendar[String(day)] = allBangers;
+      } else {
+        // Fall back to regular distribution for last day if no bangers
+        const dayAssignments = [];
+        const chosenSubmitters = new Set();
+        for (let i = 0; i < LINKS_PER_DAY; i++) {
+          const submitter = getNextSubmitter(chosenSubmitters);
+          if (!submitter) {
+            throw new Error(`Could not find enough distinct submitters for day ${day}`);
+          }
+          const links = pool.get(submitter);
+          const url = links.shift();
+          dayAssignments.push({ url });
+          usedCount.set(submitter, (usedCount.get(submitter) || 0) + 1);
+          chosenSubmitters.add(submitter);
+        }
+        calendar[String(day)] = dayAssignments;
+      }
+    } else {
+      // Regular days: distribute links normally
+      const dayAssignments = [];
+      const chosenSubmitters = new Set();
+      for (let i = 0; i < LINKS_PER_DAY; i++) {
+        const submitter = getNextSubmitter(chosenSubmitters);
+        if (!submitter) {
+          throw new Error(`Could not find enough distinct submitters for day ${day}`);
+        }
+        const links = pool.get(submitter);
+        const url = links.shift();
+        dayAssignments.push({ url });
+        usedCount.set(submitter, (usedCount.get(submitter) || 0) + 1);
+        chosenSubmitters.add(submitter);
+      }
+      calendar[String(day)] = dayAssignments;
     }
-    calendar[String(day)] = dayAssignments;
   }
 
   return calendar;
@@ -189,17 +222,25 @@ function main() {
     
     calendar = {};
     for (let day = 1; day <= REQUIRED_DAYS; day++) {
-      const items = [];
-      for (let i = 1; i <= LINKS_PER_DAY; i++) {
-        // Randomly select a service
-        const serviceIndex = Math.floor(Math.random() * services.length);
-        const urlGenerator = services[serviceIndex];
-        items.push({
-          url: urlGenerator(),
-          submitterName: `Placeholder ${i}`
-        });
+      // Special case: last day should include all bangers
+      if (day === REQUIRED_DAYS) {
+        const allBangers = placeholderSubmissions
+          .filter((sub) => sub.banger && sub.banger.length > 0)
+          .map((sub) => ({ url: sub.banger }));
+        calendar[String(day)] = allBangers.length > 0 ? allBangers : [];
+      } else {
+        // Regular days: generate placeholder links
+        const items = [];
+        for (let i = 1; i <= LINKS_PER_DAY; i++) {
+          // Randomly select a service
+          const serviceIndex = Math.floor(Math.random() * services.length);
+          const urlGenerator = services[serviceIndex];
+          items.push({
+            url: urlGenerator()
+          });
+        }
+        calendar[String(day)] = items;
       }
-      calendar[String(day)] = items;
     }
   } else {
     const calendarGenerated = generateCalendar(submissions);

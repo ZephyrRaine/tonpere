@@ -12,8 +12,8 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 
-# Data directory (user submissions)
-data/submissions.json
+# Data directory (all content)
+data/
 
 # IDE / Editor
 .vscode/

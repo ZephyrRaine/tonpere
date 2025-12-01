@@ -53,7 +53,7 @@
       // Check if day data is REDACTED
       if (!dayData || !Array.isArray(dayData) || dayData.length === 0) return false;
       const firstItem = dayData[0];
-      return firstItem.url !== 'REDACTED' && firstItem.submitterName !== 'REDACTED';
+      return firstItem.url !== 'REDACTED';
     }
 
     function readViewed() {
@@ -93,10 +93,21 @@
         // Spotify
         if (hostname.includes('spotify.com')) {
           const path = urlObj.pathname;
-          if (path.match(/^\/(track|album|playlist|artist)\//)) {
+          const segments = path.split('/').filter(Boolean);
+          const supported = ['track', 'album', 'playlist', 'artist'];
+          const typeIndex = segments.findIndex((seg) => supported.includes(seg.toLowerCase()));
+          if (typeIndex !== -1 && segments[typeIndex + 1]) {
+            const type = segments[typeIndex].toLowerCase();
+            const id = segments[typeIndex + 1];
+            const cleanPath = `/${type}/${id}`;
+            const params = new URLSearchParams(urlObj.search);
+            if (!params.has('utm_source')) {
+              params.set('utm_source', 'generator');
+            }
+            const search = params.toString();
             return {
               type: 'spotify',
-              embedUrl: `https://open.spotify.com/embed${path}?utm_source=generator`,
+              embedUrl: `https://open.spotify.com/embed${cleanPath}${search ? `?${search}` : ''}`,
               originalUrl: url
             };
           }
@@ -175,10 +186,6 @@
       const card = document.createElement('div');
       card.className = 'link-card collapsible-card';
       
-      const by = document.createElement('div');
-      by.className = 'by';
-      by.textContent = `par ${item.submitterName}`;
-      
       const titleButton = document.createElement('button');
       titleButton.className = 'title-button';
       titleButton.textContent = getTitleFromUrl(embedInfo.originalUrl, embedInfo);
@@ -186,7 +193,6 @@
       
       const titleContainer = document.createElement('div');
       titleContainer.className = 'title-container';
-      titleContainer.appendChild(by);
       titleContainer.appendChild(titleButton);
       card.appendChild(titleContainer);
       
@@ -254,6 +260,42 @@
       fallbackLink.textContent = 'Ouvrir dans une nouvelle page';
       fallbackLink.className = 'fallback-link';
       embedContainer.appendChild(fallbackLink);
+
+      if (embedInfo.type === 'spotify') {
+        const actions = document.createElement('div');
+        actions.className = 'spotify-actions';
+
+        const copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.className = 'copy-spotify-link';
+        copyButton.textContent = 'Copier le lien';
+        copyButton.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(embedInfo.originalUrl);
+            const previous = copyButton.textContent;
+            copyButton.textContent = 'Copié !';
+            setTimeout(() => {
+              copyButton.textContent = previous;
+            }, 2000);
+          } catch (err) {
+            copyButton.textContent = 'Impossible de copier';
+            setTimeout(() => {
+              copyButton.textContent = 'Copier le lien';
+            }, 2000);
+          }
+        });
+
+        const noSpotifyLink = document.createElement('a');
+        noSpotifyLink.href = 'https://idonthavespotify.sjdonado.com/';
+        noSpotifyLink.target = '_blank';
+        noSpotifyLink.rel = 'noopener noreferrer';
+        noSpotifyLink.className = 'no-spotify-link';
+        noSpotifyLink.textContent = "J'ai pas Spotify";
+
+        actions.appendChild(copyButton);
+        actions.appendChild(noSpotifyLink);
+        embedContainer.appendChild(actions);
+      }
       
       card.appendChild(embedContainer);
       
@@ -319,11 +361,7 @@
           a.target = '_blank';
           a.rel = 'noopener noreferrer';
           a.textContent = item.url;
-          const by = document.createElement('div');
-          by.className = 'by';
-          by.textContent = `par ${item.submitterName}`;
           card.appendChild(a);
-          card.appendChild(by);
           linksEl.appendChild(card);
         }
       });
@@ -377,7 +415,7 @@
           // TESTING: Using October (month 9) instead of December for testing
           const now = new Date();
           const currentMonth = now.getMonth();
-          const targetMonth = 9; // October for testing
+          const targetMonth = 11; // October for testing
           if (currentMonth >= targetMonth) {
             // If we're in or past the target month, mark as past
             statusClass = 'past';
