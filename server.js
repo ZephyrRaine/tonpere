@@ -19,6 +19,7 @@ const submissionsPath = path.join(dataDir, "submissions.json");
 const calendarPath = path.join(dataDir, "calendar.json");
 const phoneNumbersPath = path.join(dataDir, "phone-numbers.txt");
 const smsLogPath = path.join(dataDir, "sms-sent-log.json");
+const shortLinksPath = path.join(dataDir, "short-links.json");
 
 // Ensure data directory and file exist
 function ensureStorage() {
@@ -34,6 +35,9 @@ function ensureStorage() {
   }
   if (!fs.existsSync(smsLogPath)) {
     fs.writeFileSync(smsLogPath, JSON.stringify([], null, 2));
+  }
+  if (!fs.existsSync(shortLinksPath)) {
+    fs.writeFileSync(shortLinksPath, JSON.stringify({}, null, 2));
   }
 }
 
@@ -183,15 +187,77 @@ function markAsSent() {
   }
 }
 
+// URL shortener functionality
+function readShortLinks() {
+  try {
+    if (!fs.existsSync(shortLinksPath)) {
+      return {};
+    }
+    const raw = fs.readFileSync(shortLinksPath, "utf-8");
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error("Error reading short links:", err);
+    return {};
+  }
+}
+
+function writeShortLinks(links) {
+  fs.writeFileSync(shortLinksPath, JSON.stringify(links, null, 2));
+}
+
+// Generate a short code from a URL
+function generateShortCode() {
+  // Use base62 encoding (0-9, a-z, A-Z) for short codes
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+// Get or create a short link for a URL
+function getShortLink(url) {
+  const links = readShortLinks();
+  
+  // Check if URL already has a short code
+  for (const [code, storedUrl] of Object.entries(links)) {
+    if (storedUrl === url) {
+      return code;
+    }
+  }
+  
+  // Generate new short code
+  let code = generateShortCode();
+  // Ensure uniqueness (very unlikely collision, but just in case)
+  while (links[code]) {
+    code = generateShortCode();
+  }
+  
+  // Store the mapping
+  links[code] = url;
+  writeShortLinks(links);
+  
+  return code;
+}
+
+// Get full URL from short code
+function getFullUrl(shortCode) {
+  const links = readShortLinks();
+  return links[shortCode] || null;
+}
+
 function formatCalendarMessage(entries, isLastDay) {
   if (isLastDay) {
     return "tous les bangers sont sortis, rdv sur https://tonpere.com ";
   }
   
-  let message = `Noël approche la mif, check ces bons sons pour patienter :\n\n`;
+  let message = `Noel approche la mif, check ces bons sons pour patienter :\n\n`;
   entries.forEach((entry, index) => {
     if (entry.url) {
-      message += `${entry.url}\n\n`;
+      const shortCode = getShortLink(entry.url);
+      const shortUrl = `https://tonpere.com/${shortCode}`;
+      message += `${shortUrl}\n\n`;
     }
   });
   
@@ -395,6 +461,22 @@ app.get("/api/calendar", (_req, res) => {
 // Health endpoint
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+// URL shortener redirect endpoint (catch-all for short codes, must be after all specific routes)
+app.get("/:shortCode", (req, res) => {
+  const { shortCode } = req.params;
+  
+  // Try to get the full URL from the short code
+  const fullUrl = getFullUrl(shortCode);
+  
+  if (fullUrl) {
+    // Redirect to the full URL
+    return res.redirect(302, fullUrl);
+  } else {
+    // Short code not found, redirect to home page
+    return res.redirect(302, "/");
+  }
 });
 
 app.listen(port, () => {
