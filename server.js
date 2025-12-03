@@ -257,7 +257,7 @@ function formatCalendarMessage(entries, isLastDay) {
     if (entry.url) {
       const shortCode = getShortLink(entry.url);
       const shortUrl = `https://tonpere.com/${shortCode}`;
-      message += `${shortUrl}\n\n`;
+      message += `${shortUrl}\n`;
     }
   });
   
